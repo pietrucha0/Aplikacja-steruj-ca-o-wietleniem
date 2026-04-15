@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Środowisko wirtualne
+venv/
+.venv/
+env/
+.env
+
+# Inne
+.idea/
+.vscode/
+*.swp
