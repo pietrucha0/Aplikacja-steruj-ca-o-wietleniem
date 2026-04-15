@@ -28,13 +28,13 @@ async def main():
                     name = payload.get("name")
                     print(f"[REJESTRACJA] Wykryto próbę dodania włącznika: {name} ({switch_id})")
                     
-                    await asyncio.sleep(0.5) # Symulacja opóźnienia sieci
+                    await asyncio.sleep(0.5) 
                     
                     ack_payload = json.dumps({"uuid": switch_id})
                     await client.publish("system/register/ack", ack_payload)
                     print(f"[ACK] Wysłano potwierdzenie rejestracji dla: {switch_id}")
 
-                # 2. Odbiór informacji o włączeniu/wyłączeniu
+                
                 elif topic.startswith("device/") and topic.endswith("/command"):
                     switch_id = topic.split("/")[1]
                     state = payload.get("state")

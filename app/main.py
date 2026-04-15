@@ -11,10 +11,8 @@ from .models import SwitchCreate, Switch, SwitchStateUpdate
 MQTT_BROKER = "localhost"
 MQTT_PORT = 1883
 
-# "Baza danych" w pamięci RAM na potrzeby projektu
 switches_db = {}
 
-# Słownik przechowujący eventy asynchroniczne dla oczekujących rejestracji
 pending_registrations = {}
 
 mqtt_client: aiomqtt.Client | None = None
@@ -26,7 +24,7 @@ async def listen_mqtt(client: aiomqtt.Client):
         if message.topic.matches("system/register/ack"):
             payload = json.loads(message.payload.decode())
             switch_id = payload.get("uuid")
-            # Jeśli czekamy na ten UUID, uwalniamy event
+            
             if switch_id in pending_registrations:
                 pending_registrations[switch_id].set()
 
@@ -56,11 +54,10 @@ async def register_switch(switch_data: SwitchCreate):
     event = asyncio.Event()
     pending_registrations[switch_id] = event
 
-    # Wysyłamy żądanie rejestracji do symulatora
     payload = json.dumps({"uuid": switch_id, "name": switch_data.name})
     await mqtt_client.publish("system/register", payload)
 
-    # Czekamy maksymalnie 5 sekund na odpowiedź (ACK) z symulatora
+    
     try:
         await asyncio.wait_for(event.wait(), timeout=5.0)
     except asyncio.TimeoutError:
@@ -69,7 +66,6 @@ async def register_switch(switch_data: SwitchCreate):
 
     del pending_registrations[switch_id]
     
-    # Zapis do "bazy"
     new_switch = Switch(id=switch_id, name=switch_data.name)
     switches_db[switch_id] = new_switch
     
@@ -84,7 +80,6 @@ async def toggle_switch(switch_id: str, state_update: SwitchStateUpdate):
     switch = switches_db[switch_id]
     now = datetime.now(timezone.utc)
 
-    # Logika zliczania czasu działania
     if state_update.is_on and not switch.is_on:
         switch.last_turned_on_at = now
     elif not state_update.is_on and switch.is_on:
@@ -94,7 +89,6 @@ async def toggle_switch(switch_id: str, state_update: SwitchStateUpdate):
 
     switch.is_on = state_update.is_on
 
-    # Poinformowanie symulatora urządzenia o zmianie stanu
     command = "ON" if switch.is_on else "OFF"
     await mqtt_client.publish(f"device/{switch_id}/command", json.dumps({"state": command}))
 
@@ -109,7 +103,6 @@ async def get_switch_stats(switch_id: str):
     switch = switches_db[switch_id]
     current_total = switch.total_time_on_seconds
     
-    # Jeśli jest aktualnie włączony, doliczamy czas "w locie"
     if switch.is_on and switch.last_turned_on_at:
         now = datetime.now(timezone.utc)
         current_total += (now - switch.last_turned_on_at).total_seconds()
